@@ -4,10 +4,51 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
+    <title>Audio Visualizer</title>
   </head>
   <body>
-    <div id="app"></div>
+    <div id="app">
+      <div class="controls">
+        <div class="file-upload">
+          <label for="fileInput" class="upload-btn">
+            📁 Choose Audio File
+          </label>
+          <input type="file" id="fileInput" accept="audio/*" />
+          <div id="fileName" class="file-name">track 1.mp3 (default)</div>
+        </div>
+        
+        <div class="playback-controls">
+          <button id="playButton" class="play-btn">▶️ Play</button>
+          
+          <div class="progress-container">
+            <div class="time-display">
+              <span id="currentTime">0:00</span>
+              <span id="duration">0:00</span>
+            </div>
+            <input type="range" id="progressBar" min="0" max="100" step="0.1" value="0" class="progress-bar" />
+          </div>
+          
+          <div class="volume-control">
+            <label for="volumeSlider">🔊 Volume</label>
+            <input type="range" id="volumeSlider" min="0" max="1" step="0.1" value="0.7" />
+          </div>
+        </div>
+        
+        <div class="visualization-modes">
+          <button class="mode-btn active" data-mode="bars">📊 Bars</button>
+          <button class="mode-btn" data-mode="waveform">🌊 Waveform</button>
+          <button class="mode-btn" data-mode="circles">⭕ Circles</button>
+          <button class="mode-btn" data-mode="radial">🎯 Radial</button>
+        </div>
+      </div>
+      
+      <canvas id="visualizer"></canvas>
+      
+      <div class="instructions">
+        <p>🎵 Default track loaded and ready to visualize!</p>
+        <p>💡 Click play to start, or upload your own audio file</p>
+      </div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

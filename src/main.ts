@@ -1,24 +1,20 @@
 import './style.css'
-import typescriptLogo from './typescript.svg'
-import viteLogo from '/vite.svg'
-import { setupCounter } from './counter.ts'
+import { AudioVisualizer } from './core/AudioVisualizer'
 
-document.querySelector<HTMLDivElement>('#app')!.innerHTML = `
-  <div>
-    <a href="https://vite.dev" target="_blank">
-      <img src="${viteLogo}" class="logo" alt="Vite logo" />
-    </a>
-    <a href="https://www.typescriptlang.org/" target="_blank">
-      <img src="${typescriptLogo}" class="logo vanilla" alt="TypeScript logo" />
-    </a>
-    <h1>Vite + TypeScript</h1>
-    <div class="card">
-      <button id="counter" type="button"></button>
-    </div>
-    <p class="read-the-docs">
-      Click on the Vite and TypeScript logos to learn more
-    </p>
-  </div>
-`
+// Initialize the visualizer when the page loads
+document.addEventListener('DOMContentLoaded', () => {
+  // You can customize the visualizer configuration here
+  const visualizer = new AudioVisualizer({
+    fftSize: 256,           // Higher values = more detailed visualization
+    smoothingTimeConstant: 0.8,  // Lower values = more responsive
+    barSpacing: 2,          // Space between frequency bars
+    circleRadius: 3          // Size of circle particles
+  })
 
-setupCounter(document.querySelector<HTMLButtonElement>('#counter')!)
+  // Example: Update configuration at runtime
+  // visualizer.updateConfig({ barSpacing: 4, circleRadius: 5 })
+
+  // Example: Get current state
+  // console.log('Current mode:', visualizer.getCurrentMode())
+  // console.log('Is playing:', visualizer.getIsPlaying())
+})
