@@ -8,6 +8,20 @@
   </head>
   <body>
     <div id="app"></div>
+    <canvas id="visualisation"></canvas>
+    <audio id="audio-element" src=""></audio>
+    <div id="audio-controls">
+      <button id="play-button"><span class="play">Play</span><span class="pause">Pause</span></button>
+      <button id="stop-button">Stop</button>
+      <div id="current-time">00:00</div>
+      <div id="duration">00:00</div>
+      <input type="range" id="time-control" min="0" max="1" step="0.01" value="0">
+      <input type="range" id="volume-control" min="0" max="1" step="0.01" value="1">
+      <!-- <input type="range" id="frequency-control" min="0" max="1" step="0.01" value="0.5">
+      <input type="range" id="pitch-control" min="0" max="1" step="0.01" value="0.5">
+      <input type="range" id="speed-control" min="0" max="1" step="0.01" value="0.5">
+      <input type="range" id="delay-control" min="0" max="1" step="0.01" value="0.5"> -->
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
