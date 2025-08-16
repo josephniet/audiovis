@@ -1,0 +1,40 @@
+<div class="audio-player" data-audio-player="main">
+    <div class="audio-controls">
+        <button class="audio-btn audio-btn--play" data-audio-action="play" aria-label="Play audio">
+            <span class="audio-btn__icon audio-btn__icon--play">▶</span>
+            <span class="audio-btn__icon audio-btn__icon--pause">⏸</span>
+        </button>
+        
+        <button class="audio-btn audio-btn--stop" data-audio-action="stop" aria-label="Stop audio">⏹</button>
+        
+        <div class="audio-time" aria-live="polite">
+            <span class="audio-time__current" data-audio-time="current">00:00</span>
+            <span class="audio-time__separator">/</span>
+            <span class="audio-time__duration" data-audio-time="duration">00:00</span>
+        </div>
+        
+        <div class="audio-progress">
+            <label for="progress-slider" class="sr-only">Audio progress</label>
+            <input type="range" 
+                   id="progress-slider"
+                   class="audio-progress__slider" 
+                   data-audio-control="progress"
+                   min="0" max="1" step="0.01" value="0"
+                   aria-label="Seek to position">
+        </div>
+        
+        <div class="audio-volume">
+            <label for="volume-slider" class="sr-only">Volume control</label>
+            <input type="range" 
+                   id="volume-slider"
+                   class="audio-volume__slider" 
+                   data-audio-control="volume"
+                   min="0" max="1" step="0.01" value="1"
+                   aria-label="Adjust volume">
+        </div>
+        <div class="previous-next-buttons">
+            <button class="audio-btn audio-btn--previous" data-audio-action="previous" aria-label="Previous track">⏮</button>
+            <button class="audio-btn audio-btn--next" data-audio-action="next" aria-label="Next track">⏭</button>
+        </div>
+    </div>
+</div>

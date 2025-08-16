@@ -1,4 +1,4 @@
-export class AudioVisualiser {
+export class Visualiser {
     private canvas: HTMLCanvasElement = document.createElement('canvas')
     private ctx: CanvasRenderingContext2D
     private analyser: AnalyserNode
@@ -6,12 +6,14 @@ export class AudioVisualiser {
     private audioBuffer: AudioBuffer | null = null
     private animationFrameId: number | null = null
 
-    constructor(audioBuffer: AudioBuffer) {
-        document.body.appendChild(this.canvas)
+    constructor(analyser: AnalyserNode) {
+        this.analyser = analyser
+        const container = document.getElementById('visualisation-container')
+        container?.append(this.canvas)
+        this.canvas.id = "visualisation"
         this.ctx = this.canvas.getContext('2d')
         // this.audioContext = audioContext
-        this.analyser = new AnalyserNode(audioContext)
-        this.audioBuffer = audioBuffer
+
         this.animationFrameId = null
         this.canvas.width = window.innerWidth
         this.canvas.height = window.innerHeight
