@@ -1,17 +1,19 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Audio Visualizer</title>
-  </head>
-  <body>
-    <audio-player-component playlist="/public/track 1.mp3,/public/cinematic.mp3,/public/sandbreaker.mp3">
-      <audio id="audio-element" preload="metadata" aria-hidden="true">
-        <source src="/public/track 1.mp3" type="audio/mpeg">
-        Your browser does not support the audio element.
-      </audio>
-      <script type="json">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Audio Visualizer</title>
+</head>
+
+<body>
+  <audio-player-component>
+    <audio id="audio-element" preload="metadata" aria-hidden="true">
+      <source src="/public/track 1.mp3" type="audio/mpeg">
+      Your browser does not support the audio element.
+    </audio>
+    <script type="application/json" data-config="playlist">
         {
           "playlist": [{
             "src": "/public/track 1.mp3",
@@ -31,8 +33,11 @@
           ]
         }
       </script>
-    </audio-player-component>
+    <controls-component slot="controls"></controls-component>
+    <visualiser-component slot="visualiser"></visualiser-component>
+  </audio-player-component>
 
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>

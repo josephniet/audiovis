@@ -1,79 +1,69 @@
 import audioPlayerTemplate from '@/visualiser/templates/audio-player.html?raw';
 import type { VisualiserComponent } from './VisualiserComponent';
+import type { ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent, SeekEvent, VolumeEvent } from '@/visualiser/utils/events';
+import { EVENT_NAMES } from '@/visualiser/utils/events';
+import { EventManager } from '@/visualiser/utils/event-manager';
 export class AudioPlayerComponent extends HTMLElement {
 
     private playlist: string[] = []
     private playlistIndex: number = 0
     //elements
     private audioElement: HTMLAudioElement
-    private visualiserSlot: HTMLSlotElement
-    private playButton: HTMLButtonElement
-    private stopButton: HTMLButtonElement
-    private progressSlider: HTMLInputElement
-    private volumeSlider: HTMLInputElement
-    private currentTime: HTMLElement
-    private duration: HTMLElement
-    private nextButton: HTMLButtonElement
-    private previousButton: HTMLButtonElement
+    private eventManager: EventManager
+    private audioContext: AudioContext
     constructor() {
         super()
+        this.audioContext = new AudioContext()
+        this.eventManager = new EventManager()
         this.attachShadow({ mode: 'open' })
         const tpl = document.createElement('template')
         tpl.innerHTML = audioPlayerTemplate
         this.shadowRoot?.appendChild(tpl.content.cloneNode(true))
+    }
+    public getAudioContext() {
+        return this.audioContext
     }
     connectedCallback() {
         this.initialiseElements()
         this.setupControlListeners()
         this.setupAudioListeners()
         this.setupPlaylist()
-        this.setupDomListeners()
-        this.passContextToChildren(this.visualiserSlot)
     }
     disconnectedCallback() {
+        this.audioContext.close();
+    }
 
-    }
-    passContextToChildren(slot: HTMLSlotElement) {
-        const assignedNodes = slot.assignedElements({ flatten: true });
-        assignedNodes.forEach(el => {
-          if (el.tagName.toLowerCase() === 'visualiser-component') {
-            console.log('passing context to visualiser', el)
-            el.dispatchEvent(new CustomEvent('audio-element-ready', {
-                detail: {audioElement: this.audioElement},
-                bubbles: true,
-                composed: true
-            }))
-          }
-        });
-    }
     setupPlaylist() {
-        const playlist = this.getAttribute('playlist')
-        if (playlist) {
-            this.playlist = playlist.split(',')
+        const scriptTag = this.querySelector('script[type="application/json"][data-config="playlist"]');
+        if (scriptTag) {
+            try {
+                const jsonData = JSON.parse(scriptTag.textContent || '{}')
+                this.playlist = jsonData.playlist
+                console.log('audio playlist data', jsonData)
+            } catch (error) {
+                console.error('Error parsing audio playlist data', error)
+            }
         }
     }
     initialiseElements() {
         this.audioElement = this.querySelector('audio') as HTMLAudioElement
-        this.playButton = this.shadowRoot?.querySelector('.audio-btn--play') as HTMLButtonElement
-        this.stopButton = this.shadowRoot?.querySelector('.audio-btn--stop') as HTMLButtonElement
-        this.progressSlider = this.shadowRoot?.querySelector('.audio-progress__slider') as HTMLInputElement
-        this.volumeSlider = this.shadowRoot?.querySelector('.audio-volume__slider') as HTMLInputElement
-        this.currentTime = this.shadowRoot?.querySelector('.audio-time__current') as HTMLElement
-        this.duration = this.shadowRoot?.querySelector('.audio-time__duration') as HTMLElement
-        this.nextButton = this.shadowRoot?.querySelector('.audio-btn--next') as HTMLButtonElement
-        this.previousButton = this.shadowRoot?.querySelector('.audio-btn--previous') as HTMLButtonElement
-        this.visualiserSlot = this.shadowRoot?.querySelector('slot[name="visualiser"]') as HTMLSlotElement
+        this.durationUpdate()
     }
-    setupDomListeners() {
-        this.visualiserSlot.addEventListener('slotchange',()=>{
-            console.log('slotchange')
-            this.passContextToChildren(this.visualiserSlot)
+    durationUpdate() {
+        this.eventManager.emit<DurationUpdateEvent>(EVENT_NAMES.DURATION_UPDATE, {
+            duration: this.audioElement.duration
         })
     }
+
     setupAudioListeners() {
         this.audioElement.addEventListener('timeupdate', () => {
-            const ratio = this.audioElement.currentTime / this.audioElement.duration
-            this.progressSlider.value = ratio.toString()
+            this.eventManager.emit<ProgressUpdateEvent>(EVENT_NAMES.PROGRESS_UPDATE, {
+                currentTime: this.audioElement.currentTime,
+                duration: this.audioElement.duration
+            })
+        })
+        this.audioElement.addEventListener('loadedmetadata', () => {
+            this.durationUpdate()
         })
         this.audioElement.addEventListener('ended', () => {
             this.nextTrack()
@@ -86,7 +76,7 @@ export class AudioPlayerComponent extends HTMLElement {
         if (this.playlistIndex >= this.playlist.length) {
             this.playlistIndex = 0
         }
-        this.audioElement.src = this.playlist[this.playlistIndex]
+        this.audioElement.src = this.playlist[this.playlistIndex].src
         this.audioElement.currentTime = 0
         this.audioElement.play()
     }
@@ -97,35 +87,35 @@ export class AudioPlayerComponent extends HTMLElement {
         if (this.playlistIndex < 0) {
             this.playlistIndex = this.playlist.length - 1
         }
-        this.audioElement.src = this.playlist[this.playlistIndex]
+        this.audioElement.src = this.playlist[this.playlistIndex].src
         this.audioElement.play()
     }
     setupControlListeners() {
-        this.playButton.addEventListener('click', () => {
-            if (this.audioElement.paused) {
-                this.audioElement.play()
-            } else {
-                this.audioElement.pause()
-            }
+        this.eventManager.on(EVENT_NAMES.PLAY, () => {
+            this.audioElement.play()
+            this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: true })
         })
-        this.stopButton.addEventListener('click', () => {
+        this.eventManager.on(EVENT_NAMES.PAUSE, () => {
+            this.audioElement.pause()
+            this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: false })
+        })
+        this.eventManager.on(EVENT_NAMES.STOP, () => {
             this.audioElement.pause()
             this.audioElement.currentTime = 0
+            this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: false })
         })
-        this.nextButton.addEventListener('click', () => {
+        this.eventManager.on(EVENT_NAMES.NEXT, () => {
             this.nextTrack()
         })
-        this.previousButton.addEventListener('click', () => {
+        this.eventManager.on(EVENT_NAMES.PREVIOUS, () => {
             this.previousTrack()
         })
-        this.progressSlider.addEventListener('input', (e) => {
-            this.audioElement.currentTime = (this.audioElement.duration * (e.target as HTMLInputElement).value)
+        this.eventManager.on(EVENT_NAMES.SEEK, (event) => {
+            this.audioElement.currentTime = event.detail.time
         })
-        this.volumeSlider.addEventListener('input', (e) => {
-            this.audioElement.volume = parseFloat((e.target as HTMLInputElement).value)
+        this.eventManager.on(EVENT_NAMES.VOLUME, (event) => {
+            this.audioElement.volume = event.detail.volume
         })
-        this.currentTime.textContent = '00:00'
-        this.duration.textContent = '00:00'
     }
 
 }

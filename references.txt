@@ -1,1 +1,6 @@
 https://editor.p5js.org/Sophi333/sketches/BkX-DE0ip
+https://wavesurfer.xyz/examples/?zoom.js
+https://wavesurfer.xyz/examples/?pitch.js
+https://www.behance.net/gallery/64019463/Oscil-Audio-Visual-Web-App#
+https://github.com/ryanachten/Oscil/blob/master/src/visuals/shapes/chladniPlate.js
+https://css-tricks.com/making-an-audio-waveform-visualizer-with-vanilla-javascript/

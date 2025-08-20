@@ -1,8 +1,12 @@
+import type { ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent, SeekEvent, VolumeEvent } from '@/visualiser/types/events';
+import { EVENT_NAMES } from '@/visualiser/utils/events';
+import { EventManager } from '@/visualiser/utils/event-manager';
+import { AudioPlayerComponent } from './AudioPlayerComponent';
 import visualiserTemplate from '@/visualiser/templates/visualiser.html?raw'
 import visualiserStyles from '@/visualiser/templates/visualiser.css?raw'
 
-
 export class VisualiserComponent extends HTMLElement {
+    private connectedCount = 0
     private source: MediaElementAudioSourceNode | null = null
     private audioElement: HTMLAudioElement | null = null
     private audioContext: AudioContext | null = null
@@ -15,31 +19,76 @@ export class VisualiserComponent extends HTMLElement {
     private animationFrame: number | null = null
     private scale: number = 1
     private isPlaying: boolean = false
+    private waveformContainer: HTMLDivElement | null = null
+    private parentAudioPlayer: AudioPlayerComponent | null = null
     constructor() {
         super()
         this.attachShadow({ mode: 'open' })
     }
-    connectedCallback() {
+    setAudioContext(audioContext: AudioContext) {
+        this.audioContext = audioContext
+    }
+    async setupAudioContext(): Promise<void> {
+        await customElements.whenDefined('audio-player');
+        this.parentAudioPlayer = this.closest('audio-player-component') as AudioPlayerComponent
+
+        if (!this.parentAudioPlayer) {
+            console.warn('No parent audio player found for visualiser')
+            return
+        }
+        console.log('parent audio player', this.parentAudioPlayer.getAudioContext())
+        const audioContext = this.parentAudioPlayer.getAudioContext()
+        if (audioContext) {
+            this.setAudioContext(audioContext)
+            return
+        }
+
+        // Wait for audio context to be ready
+        return new Promise<void>((resolve, reject) => {
+            const handler = () => {
+                this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
+                const currentAudioContext = this.parentAudioPlayer?.getAudioContext()
+                if (currentAudioContext) {
+                    this.setAudioContext(currentAudioContext)
+                    resolve()
+                } else {
+                    reject(new Error('Audio context not available after ready event'))
+                }
+            }
+
+            // Add timeout to prevent hanging
+            const timeout = setTimeout(() => {
+                this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
+                reject(new Error('Audio context ready event timeout'))
+            }, 10000) // 10 second timeout
+
+            this.parentAudioPlayer.addEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, () => {
+                clearTimeout(timeout)
+                handler()
+            })
+        })
+    }
+    async connectedCallback() {
+        this.connectedCount++
+        console.log('connected visualiser', this.connectedCount)
+        if (this.connectedCount > 1) {
+            console.log('visualiser already connected')
+            return
+        }
         const style = document.createElement('style')
         style.textContent = visualiserStyles
         this.shadowRoot?.appendChild(style)
         const tpl = document.createElement('template')
         tpl.innerHTML = visualiserTemplate
         this.shadowRoot?.appendChild(tpl.content.cloneNode(true))
+        this.waveformContainer = this.shadowRoot?.querySelector('#waveform') as HTMLDivElement
         this.setupCanvas()
-        this.addEventListener('audio-element-ready', (e) => {
-            const { audioElement } = (e as CustomEvent<{ audioElement: HTMLAudioElement }>).detail;
-            console.log('audio element ready', audioElement);
-            //initial setup
-            this.audioElement = audioElement
-            this.setupAudio(audioElement)
-            this.setupAudioListeners()
-            //handle changing element src
-            audioElement?.addEventListener('loadstart', () => {
-                console.log('audio src changed, setting up audio')
-                this.setupAudio(audioElement)
-            })
-        });
+        try {
+            await this.setupAudioContext()
+        } catch (error) {
+            console.error('Error setting up audio context', error)
+        }
+
     }
     cleanupAudio() {
         if (this.animationFrame) {
@@ -66,20 +115,33 @@ export class VisualiserComponent extends HTMLElement {
         try {
             console.log('setting up audio')
             this.audioContext = new AudioContext()
+
+            // Always try to resume the audio context first
+            if (this.audioContext.state === 'suspended') {
+                console.log('Audio context suspended, attempting to resume...')
+                try {
+                    await this.audioContext.resume()
+                    console.log('Audio context resumed successfully')
+                } catch (resumeError) {
+                    console.log('Resume failed, user interaction may be required')
+                    // Don't throw here, continue with setup
+                }
+            }
             this.source = this.audioContext.createMediaElementSource(this.audioElement)
+            console.log('Source channels:', this.source.channelCount);
             this.analyser = new AnalyserNode(this.audioContext)
-            this.analyser.fftSize = 256
+            this.analyser.fftSize = 2048
             this.bufferLength = this.analyser.frequencyBinCount
             this.dataArray = new Uint8Array(this.bufferLength)
             this.timeDomainDataArray = new Uint8Array(this.bufferLength)
-            this.source.connect(this.analyser)
+            const monoSource = this.createMonoFromStereo(this.audioContext, this.source)
+            monoSource.connect(this.analyser)
             this.analyser.connect(this.audioContext.destination)
-            // Resume audio context if it's suspended
-            if (this.audioContext.state === 'suspended') {
-                console.log('resuming audio context', this.audioContext)
-                await this.audioContext.resume()
-                console.log('audio context resumed')
-            }
+            this.analyser.channelCount = 1;
+            this.analyser.channelCountMode = 'explicit';
+            console.log('monoSource channel count', monoSource.channelCount)
+            console.log('analyser channel count', this.analyser.channelCount)
+
             console.log('audio setup complete')
             this.startAnimation()
         } catch (error) {
@@ -127,35 +189,7 @@ export class VisualiserComponent extends HTMLElement {
         this.scale = scale
         this.ctx.scale(this.scale, this.scale)
     }
-    drawWaveform() {
-        if (!this.ctx || !this.analyser || !this.canvas) return
-        const bufferLength = this.analyser.frequencyBinCount
-        this.analyser.getByteTimeDomainData(this.timeDomainDataArray)
-        // console.log(this.timeDomainDataArray)
-        // this.ctx.setTransform(1, 0, 0, 1, 0, 0)
-        // Calculate center of canvas
-        const centerX = this.canvas.width / 2
-        const centerY = this.canvas.height / 2
-        //begin path
-        this.ctx.lineWidth = 2
-        this.ctx.strokeStyle = 'white'
-        this.ctx.beginPath()
-        const sliceWidth = this.canvas.width / bufferLength
-        let x = 0
-        for (let i = 0; i < bufferLength; i++) {
-            //normalize to 0-1
-            const amplitude = this.timeDomainDataArray[i] / 128
-            console.log('Sample', i, 'value:', amplitude)
-            const y = (amplitude * 1) * centerY
-            if (i === 0) {
-                this.ctx.moveTo(x, y)
-            } else {
-                this.ctx.lineTo(x, y)
-            }
-            x += sliceWidth
-        }
-        this.ctx.stroke()
-    }
+
     draw() {
         if (!this.ctx || !this.analyser || !this.canvas) return
         // Clear canvas
@@ -166,49 +200,83 @@ export class VisualiserComponent extends HTMLElement {
         if (this.animationFrame === null) return
         this.animationFrame = requestAnimationFrame(() => this.draw())
     }
-    drawRings() {
-        if (!this.ctx || !this.analyser || !this.canvas) return
+    private filterData(data) {
 
-        // Get frequency data from analyser
-        this.analyser.getByteFrequencyData(this.dataArray)
+    }
+    private createMonoFromStereo(audioContext: AudioContext, source: MediaElementAudioSourceNode) {
+        const splitter = audioContext?.createChannelSplitter(2)
+        const merger = audioContext.createChannelMerger(1)
+        const leftGain = audioContext?.createGain()
+        const rightGain = audioContext.createGain()
+        leftGain.gain.value = 0.5
+        rightGain.gain.value = 0.5
+        source.connect(splitter)
+        splitter.connect(leftGain, 0)
+        splitter.connect(rightGain, 1)
+        leftGain.connect(merger, 0, 0)
+        rightGain.connect(merger, 0, 0)
+        return merger
+    }
 
-
-
-        // Calculate center of canvas
-        const centerX = this.canvas.width / (2 * this.scale)
-        const centerY = this.canvas.height / (2 * this.scale)
-
-        // Calculate max radius (smaller of width/height, with some padding)
-        const maxRadius = Math.min(centerX, centerY) * 0.8
-
-        // Number of rings to draw
-        const numRings = 8
-
-        // Draw concentric rings
-        for (let i = 0; i < numRings; i++) {
-            const ringIndex = Math.floor((i / numRings) * this.bufferLength)
-            const frequencyValue = this.dataArray[ringIndex] || 0
-
-            // Calculate ring radius and thickness
-            const ringRadius = (i / numRings) * maxRadius
-            const ringThickness = maxRadius / numRings
-
-            // Calculate opacity and color based on frequency data
-            const opacity = frequencyValue / 255
-            const hue = (i / numRings) * 360 // Different color for each ring
-            const saturation = 80 + (opacity * 20) // 80-100%
-            const lightness = 50 + (opacity * 30) // 50-80%
-
-            // Set fill style
-            this.ctx.fillStyle = `hsla(${hue}, ${saturation}%, ${lightness}%, ${opacity})`
-
-            // Draw ring (filled circle with inner circle cut out)
-            this.ctx.beginPath()
-            this.ctx.arc(centerX, centerY, ringRadius + ringThickness, 0, 2 * Math.PI)
-            this.ctx.arc(centerX, centerY, ringRadius, 0, 2 * Math.PI, true) // Counter-clockwise for cutout
-            this.ctx.fill()
+    drawGrid(ctx: CanvasRenderingContext2D, container: HTMLElement) {
+        const cellWidth = 40
+        const cellHeight = 40
+        const width = container.clientWidth
+        const height = container.clientHeight
+        ctx.lineWidth = 1
+        ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'
+        ctx.translate(container.offsetLeft, container.offsetTop)
+        for (let x = 0; x <= width; x += cellWidth) {
+            ctx.beginPath()
+            ctx.moveTo(x, 0)
+            ctx.lineTo(x, height)
+            ctx.stroke()
         }
-
+        for (let y = 0; y <= height; y += cellHeight) {
+            ctx.beginPath()
+            ctx.moveTo(0, y)
+            ctx.lineTo(width, y)
+            ctx.stroke()
+        }
+        ctx.resetTransform()
+    }
+    drawWaveform() {
+        if (!this.ctx || !this.analyser || !this.canvas) return
+        const bufferLength = this.analyser.frequencyBinCount
+        this.analyser.getByteTimeDomainData(this.timeDomainDataArray)
+        // console.log(this.timeDomainDataArray)
+        // this.ctx.setTransform(1, 0, 0, 1, 0, 0)
+        // Calculate center of canvas
+        this.drawGrid(this.ctx, this.waveformContainer)
+        const width = this.waveformContainer?.clientWidth || 0
+        const height = this.waveformContainer?.clientHeight || 0
+        const left = this.waveformContainer?.offsetLeft || 0
+        const top = this.waveformContainer?.offsetTop || 0
+        const bottom = top + height
+        const right = left + width
+        const centerX = this.canvas.width / 2
+        const centerY = top + (height / 2)
+        //begin path
+        this.ctx.lineWidth = 2
+        this.ctx.strokeStyle = 'white'
+        this.ctx.moveTo(left, centerY)
+        this.ctx.beginPath()
+        this.ctx.translate(0, top + (height / 2))
+        const sliceWidth = width / bufferLength
+        let x = left
+        for (let i = 0; i < bufferLength; i++) {
+            //normalize to 0-1
+            const amplitude = (-0.5 + (this.timeDomainDataArray[i] / 255)) * 2
+            const y = amplitude * (height / 2)
+            if (i === 0) {
+                this.ctx.moveTo(x, y)
+            } else {
+                this.ctx.lineTo(x, y)
+            }
+            x += sliceWidth
+        }
+        this.ctx.stroke()
+        this.ctx.resetTransform()
 
     }
 }
