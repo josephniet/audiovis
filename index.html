@@ -1,13 +1,44 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Vite + TS</title>
-  </head>
-  <body>
-    <div id="app"></div>
-    <script type="module" src="/src/main.ts"></script>
-  </body>
+
+<head>
+  <meta charset="UTF-8" />
+  <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vite + TS</title>
+</head>
+
+<body>
+  <div id="app">
+    <audio-player-component>
+      <image id="cover-image" src="/cover.png" alt="Cover image" width="200" height="200" />
+      <audio id="audio-element" preload="metadata" aria-hidden="true">
+        <source src="/track 1.mp3" type="audio/mpeg">
+        Your browser does not support the audio element.
+      </audio>
+      <script type="application/json" data-config="playlist">
+                    {
+                      "playlist": [{
+                        "src": "/public/track 1.mp3",
+                        "title": "Track 1",
+                        "cover": "/public/cover.png"
+                      },
+                      {
+                        "src": "/public/cinematic.mp3",
+                        "title": "Cinematic",
+                        "cover": "/public/cover.png"
+                      },
+                      {
+                        "src": "/public/sandbreaker.mp3",
+                        "title": "Sandbreaker",
+                        "cover": "/public/cover.png"
+                      }
+                      ]
+                    }
+                  </script>
+    </audio-player-component>
+  </div>
+  <script type="module" src="/src/main.ts"></script>
+</body>
+
 </html>
