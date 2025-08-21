@@ -12,7 +12,14 @@ export const EVENT_NAMES = {
     DURATION_UPDATE: 'jojo-duration-update',
     AUDIO_CONTEXT_READY: 'jojo-audio-context-ready',
     LOAD_METADATA: 'jojo-load-metadata',
+    AUDIO_READY: 'jojo-audio-ready',
 } as const;
+
+export interface AudioReadyEvent {
+    audioElement: HTMLAudioElement
+    audioContext: AudioContext
+    duration: number
+}
 
 export interface PlayEvent {
     // No payload needed

@@ -123,7 +123,7 @@ export class ControlsComponent extends HTMLElement {
             const { duration } = event.detail
             console.log('duration update x', duration)
             if (isNaN(duration)) {
-                throw new Error('currentTime is NaN')
+                throw new Error('currentTime is NaN', duration, event)
             }
             this.duration.textContent = this.formatTime(duration)
             this.progressSlider.max = duration.toString()

@@ -1,12 +1,17 @@
 import type { ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent, SeekEvent, VolumeEvent } from '@/visualiser/types/events';
 import { EVENT_NAMES } from '@/visualiser/utils/events';
 import { EventManager } from '@/visualiser/utils/event-manager';
+import type { AudioReadyEvent } from '@/visualiser/utils/events';
 import { AudioPlayerComponent } from './AudioPlayerComponent';
 import visualiserTemplate from '@/visualiser/templates/visualiser.html?raw'
 import visualiserStyles from '@/visualiser/templates/visualiser.css?raw'
+import type { ReadyComponent } from '@/visualiser/utils/component-bootstrap';
 
-export class VisualiserComponent extends HTMLElement {
+export class VisualiserComponent extends HTMLElement implements ReadyComponent {
+    public ready: Promise<void>
+    public readyState: 'pending' | 'resolved' | 'rejected'
     private connectedCount = 0
+    private initialised = false
     private source: MediaElementAudioSourceNode | null = null
     private audioElement: HTMLAudioElement | null = null
     private audioContext: AudioContext | null = null
@@ -20,54 +25,78 @@ export class VisualiserComponent extends HTMLElement {
     private scale: number = 1
     private isPlaying: boolean = false
     private waveformContainer: HTMLDivElement | null = null
-    private parentAudioPlayer: AudioPlayerComponent | null = null
+    private eventManager: EventManager
+    private resolveReady: (value: unknown) => void
+    private rejectReady: (reason?: any) => void
     constructor() {
         super()
         this.attachShadow({ mode: 'open' })
+        this.eventManager = new EventManager()
+        this.ready = new Promise((resolve, reject) => {
+            this.readyState = 'pending'
+            this.resolveReady = resolve
+            this.rejectReady = reject
+        })
     }
     setAudioContext(audioContext: AudioContext) {
         this.audioContext = audioContext
     }
-    async setupAudioContext(): Promise<void> {
-        await customElements.whenDefined('audio-player');
-        this.parentAudioPlayer = this.closest('audio-player-component') as AudioPlayerComponent
-
-        if (!this.parentAudioPlayer) {
+    async initialise() {
+        if (this.initialised) {
+            return
+        }
+        this.initialised = true
+        await customElements.whenDefined('audio-player-component');
+        const parentAudioPlayer = this.closest('audio-player-component') as AudioPlayerComponent
+        if (!parentAudioPlayer) {
             console.warn('No parent audio player found for visualiser')
             return
         }
-        console.log('parent audio player', this.parentAudioPlayer.getAudioContext())
-        const audioContext = this.parentAudioPlayer.getAudioContext()
-        if (audioContext) {
-            this.setAudioContext(audioContext)
-            return
-        }
-
-        // Wait for audio context to be ready
-        return new Promise<void>((resolve, reject) => {
-            const handler = () => {
-                this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
-                const currentAudioContext = this.parentAudioPlayer?.getAudioContext()
-                if (currentAudioContext) {
-                    this.setAudioContext(currentAudioContext)
-                    resolve()
-                } else {
-                    reject(new Error('Audio context not available after ready event'))
-                }
-            }
-
-            // Add timeout to prevent hanging
-            const timeout = setTimeout(() => {
-                this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
-                reject(new Error('Audio context ready event timeout'))
-            }, 10000) // 10 second timeout
-
-            this.parentAudioPlayer.addEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, () => {
-                clearTimeout(timeout)
-                handler()
-            })
-        })
+        const { audioElement, audioContext, duration } = await parentAudioPlayer.ready
+        this.audioElement = audioElement
+        this.audioContext = audioContext
+        console.log('initialiser', audioElement, audioContext, duration)
     }
+    // async setupAudioContext(): Promise<void> {
+    //     await customElements.whenDefined('audio-player');
+    //     this.parentAudioPlayer = this.closest('audio-player-component') as AudioPlayerComponent
+
+    //     if (!this.parentAudioPlayer) {
+    //         console.warn('No parent audio player found for visualiser')
+    //         return
+    //     }
+    //     console.log('parent audio player', this.parentAudioPlayer.getAudioContext())
+    //     const audioContext = this.parentAudioPlayer.getAudioContext()
+    //     if (audioContext) {
+    //         this.setAudioContext(audioContext)
+    //         return
+    //     }
+
+    //     // Wait for audio context to be ready
+    //     return new Promise<void>((resolve, reject) => {
+    //         const handler = () => {
+    //             this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
+    //             const currentAudioContext = this.parentAudioPlayer?.getAudioContext()
+    //             if (currentAudioContext) {
+    //                 this.setAudioContext(currentAudioContext)
+    //                 resolve()
+    //             } else {
+    //                 reject(new Error('Audio context not available after ready event'))
+    //             }
+    //         }
+
+    //         // Add timeout to prevent hanging
+    //         const timeout = setTimeout(() => {
+    //             this.parentAudioPlayer?.removeEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, handler)
+    //             reject(new Error('Audio context ready event timeout'))
+    //         }, 10000) // 10 second timeout
+
+    //         this.parentAudioPlayer.addEventListener(EVENT_NAMES.AUDIO_CONTEXT_READY, () => {
+    //             clearTimeout(timeout)
+    //             handler()
+    //         })
+    //     })
+    // }
     async connectedCallback() {
         this.connectedCount++
         console.log('connected visualiser', this.connectedCount)
@@ -83,12 +112,9 @@ export class VisualiserComponent extends HTMLElement {
         this.shadowRoot?.appendChild(tpl.content.cloneNode(true))
         this.waveformContainer = this.shadowRoot?.querySelector('#waveform') as HTMLDivElement
         this.setupCanvas()
-        try {
-            await this.setupAudioContext()
-        } catch (error) {
-            console.error('Error setting up audio context', error)
-        }
-
+        await this.initialise()
+        await this.setupAudio()
+        this.resolveReady()
     }
     cleanupAudio() {
         if (this.animationFrame) {
@@ -108,13 +134,10 @@ export class VisualiserComponent extends HTMLElement {
             this.audioContext = null
         }
     }
-    async setupAudio(audioElement: HTMLAudioElement) {
-        this.cleanupAudio()
+    async setupAudio() {
         //TODO: Make sure this only runs once
-        this.audioElement = audioElement
         try {
             console.log('setting up audio')
-            this.audioContext = new AudioContext()
 
             // Always try to resume the audio context first
             if (this.audioContext.state === 'suspended') {

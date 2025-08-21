@@ -1,6 +1,6 @@
 import audioPlayerTemplate from '@/visualiser/templates/audio-player.html?raw';
-import type { VisualiserComponent } from './VisualiserComponent';
-import type { ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent, SeekEvent, VolumeEvent } from '@/visualiser/utils/events';
+import type { VisualiserComponent } from '@/VisualiserComponent';
+import type { ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent, SeekEvent, VolumeEvent, AudioReadyEvent } from '@/visualiser/utils/events';
 import { EVENT_NAMES } from '@/visualiser/utils/events';
 import { EventManager } from '@/visualiser/utils/event-manager';
 export class AudioPlayerComponent extends HTMLElement {
@@ -11,6 +11,9 @@ export class AudioPlayerComponent extends HTMLElement {
     private audioElement: HTMLAudioElement
     private eventManager: EventManager
     private audioContext: AudioContext
+    public ready: Promise<void>
+    private resolveReady(value: unknown) { }
+    private rejectReady(reason?: any) { }
     constructor() {
         super()
         this.audioContext = new AudioContext()
@@ -19,15 +22,33 @@ export class AudioPlayerComponent extends HTMLElement {
         const tpl = document.createElement('template')
         tpl.innerHTML = audioPlayerTemplate
         this.shadowRoot?.appendChild(tpl.content.cloneNode(true))
+        this.ready = new Promise((resolve, reject) => {
+            this.resolveReady = resolve
+            this.rejectReady = reject
+        })
     }
     public getAudioContext() {
         return this.audioContext
+    }
+    declareReady() {
+        audioElement: this.audioElement,
+            this.resolveReady({
+                audioElement: this.audioElement,
+                audioContext: this.audioContext,
+                duration: this.audioElement.duration
+            })
+        this.eventManager.emit<AudioReadyEvent>(EVENT_NAMES.AUDIO_READY, {
+            audioElement: this.audioElement,
+            audioContext: this.audioContext,
+            duration: this.audioElement.duration
+        })
     }
     connectedCallback() {
         this.initialiseElements()
         this.setupControlListeners()
         this.setupAudioListeners()
         this.setupPlaylist()
+        this.declareReady()
     }
     disconnectedCallback() {
         this.audioContext.close();
