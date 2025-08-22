@@ -22,3 +22,8 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Audio files
+src/audio/Down Under (feat. Colin Hay) - Luude.mp3
+src/audio/Run On - Jamie Bower.mp3
+src/audio/Tainted Love - Soft Cell.mp3
