@@ -131,9 +131,11 @@ export class VisualiserComponent extends BaseComponent {
         const beat = this.beatDetector.detectAsRatio(0, 200)
         // const easedBeat = Math.pow(beat, 10)
         const easedBeat = this.sigmoidEasing(beat, 0.9, 10)
+        // const color2 = Math.sin(this.animationFrame! / 1000) * 255
         // const easedBeat = Math.round(Math.pow(beat, 3))
         // console.log('beat', beat)
         this.ctx.fillStyle = `rgb(${easedBeat * 255}, 0, 0)`
+        // this.ctx.fillStyle = `hsl(${Math.sin(this.animationFrame! / 200) * 360}, 100%, ${this.sigmoidEasing(beat, 0.9, 10) * 80}%)`1
         this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
         // Clear canvas
         drawGrid(this.ctx, this.progressElement)
