@@ -13,6 +13,7 @@ export class LyricsComponent extends BaseComponent {
     eventManager = new EventManager()
     liricle = new Liricle()
     lyricsData = {}
+    currentTrack: Track | null = null
     constructor() {
         super()
         const shadowRoot = this.attachShadow({ mode: 'open' })
@@ -54,8 +55,16 @@ export class LyricsComponent extends BaseComponent {
             this.updateLyrics(line, word)
         });
     }
+    resetLyrics() {
+        this.lyricsContainer.innerHTML = ''
+    }
     updateTrack(track: Track) {
-        console.log('lrc', track.lrc)
+        if (this.currentTrack === track) {
+            console.warn('track is the same as the current track, doing nothing', track.title)
+            return
+        }
+        this.resetLyrics()
+        this.currentTrack = track
         if (!track.lrc) {
             throw new Error('No lyrics found for track')
         }
@@ -65,13 +74,11 @@ export class LyricsComponent extends BaseComponent {
         });
     }
     audioUpdate(currentTime: number) {
-        console.log('updateLyrics', currentTime)
         const time = currentTime;
         // sync lyric when the audio time updated
         this.liricle.sync(time, false);
     }
     updateLyrics(line: line, word: word) {
-        console.log("Sync event:", line, word);
         this.lyricsContainer.innerHTML = line.text
     }
 }

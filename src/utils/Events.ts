@@ -21,15 +21,23 @@ export const EVENT_NAMES = {
     TRACK_REMOVED: 'jojo-track-removed',
     TRACK_CHANGED: 'jojo-track-changed',
     AUDIO_PLAYER_DATA: 'jojo-audio-player-data',
-    REQUEST_AUDIO_PLAYER_DATA: 'jojo-request-audio-player-data'
+    REQUEST_AUDIO_PLAYER_DATA: 'jojo-request-audio-player-data',
+    REQUEST_CONTROLS_DATA: 'jojo-request-controls-data',
+    CONTROLS_DATA: 'jojo-controls-data'
 }
 
-console.log('EVENT_NAMES', EVENT_NAMES)
 // export type EventMap = new Map<string, string>()
 
 
 export interface PlayEvent {
     // No payload needed
+}
+export interface ControlsData {
+    progressElement: HTMLElement
+    // volume?: number
+    // isPlaying?: boolean
+    // currentTime?: number
+    // duration?: number,
 }
 export interface AudioPlayerData {
     audioElement: HTMLAudioElement

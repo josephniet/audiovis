@@ -4,6 +4,7 @@ import controlsCSS from '@/controls.css?raw'
 import { formatTime } from '@/utils/formatTime'
 import { EventManager } from '@/utils/EventManager'
 import { EVENT_NAMES } from '@/utils/Events'
+import type { ControlsData } from '@/utils/Events'
 import type { SeekEvent, VolumeEvent, ProgressUpdateEvent, PlayStateUpdateEvent, DurationUpdateEvent } from '@/utils/Events'
 
 export default class ControlsComponent extends BaseComponent {
@@ -36,9 +37,9 @@ export default class ControlsComponent extends BaseComponent {
     }
     connectedCallback() {
         this.connectedCount++
-        console.log('controls component connected', this.connectedCount)
         this.setupControlListeners()
         this.setupExternalListeners()
+        this.setupVisualiserListeners()
     }
 
     pause() {
@@ -113,14 +114,20 @@ export default class ControlsComponent extends BaseComponent {
             }
         })
         this.eventManager.on<DurationUpdateEvent>(EVENT_NAMES.DURATION_UPDATE, (event) => {
-            const { duration } = event.detail
-            console.log('duration update x', duration)
+            const duration = event.detail.duration
             if (isNaN(duration)) {
-                throw new Error('currentTime is NaN', duration, event)
+                throw new Error('currentTime is NaN')
             }
             this.duration.textContent = formatTime(duration)
             this.progressSlider.max = duration.toString()
         })
+    }
+    private setupVisualiserListeners() {
+        this.eventManager.on(EVENT_NAMES.REQUEST_CONTROLS_DATA, (event) => {
+            this.eventManager.emit<ControlsData>(EVENT_NAMES.CONTROLS_DATA, {
+                progressElement: this.progressSlider
+            })
+        }, { once: true })
     }
 }
 customElements.define('controls-component', ControlsComponent)

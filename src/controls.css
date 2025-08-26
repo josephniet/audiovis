@@ -4,6 +4,14 @@
 }
 
 
+#progress-slider {
+    width: round(70vw, 40px);
+    height: 80px;
+    display: block;
+    background: rgba(128, 128, 128, 0.352);
+    margin: 0 auto;
+}
+
 input[type="range"] {
     -webkit-appearance: none;
     appearance: none;

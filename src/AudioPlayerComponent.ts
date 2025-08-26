@@ -35,10 +35,6 @@ export default class AudioPlayerComponent extends BaseComponent {
     connectedCallback() {
         console.log('audio player component connected', this.connectedCount)
         this.connectedCount++
-        console.log('audio element', this.audioElement)
-        console.log('cover image', this.coverImage)
-        console.log('visualiser canvas', this.visualiserCanvas)
-        console.log('controls component', this.controlsComponent)
         this.setupHandlers()
         this.setupAudioListeners()
         this.setupPlaylist()

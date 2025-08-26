@@ -22,16 +22,16 @@ class EventManager {
         this.eventTarget = element || EventBus.getInstance();
     }
 
-    on<T>(eventName: string, callback: (event: CustomEvent<T>) => void): void {
-        this.eventTarget.addEventListener(eventName, callback as EventListener);
+    on<T>(eventName: string, callback: (event: CustomEvent<T>) => void, options?: AddEventListenerOptions): void {
+        this.eventTarget.addEventListener(eventName, callback as EventListener, options);
     }
 
     emit<T>(eventName: string, detail?: T): void {
         this.eventTarget.dispatchEvent(new CustomEvent<T>(eventName, { detail, bubbles: true }));
     }
 
-    off<T>(eventName: string, callback: (event: CustomEvent<T>) => void): void {
-        this.eventTarget.removeEventListener(eventName, callback as EventListener);
+    off<T>(eventName: string, callback: (event: CustomEvent<T>) => void, options?: AddEventListenerOptions): void {
+        this.eventTarget.removeEventListener(eventName, callback as EventListener, options);
     }
 }
 
