@@ -114,13 +114,23 @@ export class VisualiserComponent extends BaseComponent {
         this.scale = scale
         this.ctx.scale(this.scale, this.scale)
     }
+    sigmoidEasing(value: number, threshold: number, steepness: number = 10): number {
+        // Normalize to center around threshold
+        const normalized = (value - threshold) / (1 - threshold);
+
+        // Apply sigmoid function
+        const sigmoid = 1 / (1 + Math.exp(-steepness * normalized));
+
+        return sigmoid;
+    }
     draw() {
         if (!this.progressElement) {
             throw new Error('Progress element not found')
         }
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
-        const beat = this.beatDetector.detectAsRatio(0, 600)
-        const easedBeat = Math.pow(beat, 5)
+        const beat = this.beatDetector.detectAsRatio(0, 200)
+        // const easedBeat = Math.pow(beat, 10)
+        const easedBeat = this.sigmoidEasing(beat, 0.9, 10)
         // const easedBeat = Math.round(Math.pow(beat, 3))
         // console.log('beat', beat)
         this.ctx.fillStyle = `rgb(${easedBeat * 255}, 0, 0)`

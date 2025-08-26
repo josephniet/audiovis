@@ -112,6 +112,9 @@ export default class AudioPlayerComponent extends BaseComponent {
     play = () => {
         console.log('play')
         if (!this.audioElement.paused) return
+        if (this.audioContext.state === 'suspended') {
+            this.audioContext.resume()
+        }
         this.audioElement.play()
         this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: true })
     }
