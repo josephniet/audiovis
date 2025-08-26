@@ -31,6 +31,7 @@ export default class AudioPlayerComponent extends BaseComponent {
         this.audioElement = this.shadowRoot?.querySelector('audio') as HTMLAudioElement
         this.coverImage = this.shadowRoot?.querySelector('#cover-image') as HTMLImageElement
         this.visualiserCanvas = this.shadowRoot?.querySelector('#visualiser-canvas') as HTMLCanvasElement
+        window.audioPlayerComponent = this
     }
     connectedCallback() {
         console.log('audio player component connected', this.connectedCount)
@@ -110,10 +111,15 @@ export default class AudioPlayerComponent extends BaseComponent {
     }
     play = () => {
         console.log('play')
+        if (!this.audioElement.paused) return
         this.audioElement.play()
         this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: true })
     }
-    pause = () => { this.audioElement.pause() }
+    pause = () => {
+        if (this.audioElement.paused) return
+        this.audioElement.pause()
+        this.eventManager.emit(EVENT_NAMES.PLAY_STATE_UPDATE, { isPlaying: false })
+    }
     stop = () => { this.audioElement.pause(); this.audioElement.currentTime = 0 }
     nextTrack = () => {
         this.playlist.nextTrack();
