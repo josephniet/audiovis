@@ -4,6 +4,9 @@ import DownUnderAudio from '@/audio/Down Under (feat. Colin Hay) - Luude.mp3'
 import TaintedLoveAudio from '@/audio/Tainted Love - Soft Cell.mp3'
 import TaintedLoveCover from '@/audio/Tainted Love.jpg'
 import TaintedLoveLrc from '@/audio/Tainted Love.lrc?raw'
+import RunOnAudio from '@/audio/Run On - Jamie Bower.mp3'
+import RunOnCover from '@/audio/Run On.jpg'
+import RunOnLrc from '@/audio/Run On.lrc?raw'
 
 export interface Track {
     src: string
@@ -55,7 +58,14 @@ const taintedLove = new TrackData()
     .addLrc(TaintedLoveLrc)
     .build()
 
-const playlistData = [downUnder, taintedLove]
+const runOn = new TrackData()
+    .addSource(RunOnAudio)
+    .addTitle('Run On')
+    .addCover(RunOnCover)
+    .addLrc(RunOnLrc)
+    .build()
+
+const playlistData = [downUnder, taintedLove, runOn]
 
 export { playlistData }
 console.log(playlistData)

@@ -1,6 +1,8 @@
 // src/events.ts
 import type { Track } from "@/Playlist"
 
+
+
 export const EVENT_NAMES = {
     PLAY: 'jojo-play',
     PAUSE: 'jojo-pause',
@@ -18,17 +20,31 @@ export const EVENT_NAMES = {
     TRACK_ADDED: 'jojo-track-added',
     TRACK_REMOVED: 'jojo-track-removed',
     TRACK_CHANGED: 'jojo-track-changed',
-} as const;
+    AUDIO_PLAYER_DATA: 'jojo-audio-player-data',
+    REQUEST_AUDIO_PLAYER_DATA: 'jojo-request-audio-player-data'
+}
+
+console.log('EVENT_NAMES', EVENT_NAMES)
+// export type EventMap = new Map<string, string>()
+
+
+export interface PlayEvent {
+    // No payload needed
+}
+export interface AudioPlayerData {
+    audioElement: HTMLAudioElement
+    audioContext: AudioContext
+    duration: number
+    track: Track
+}
 
 export interface AudioReadyEvent {
     audioElement: HTMLAudioElement
     audioContext: AudioContext
     duration: number
+    track: Track
 }
 
-export interface PlayEvent {
-    // No payload needed
-}
 
 export interface PauseEvent {
     // No payload needed
@@ -85,3 +101,7 @@ export interface TrackRemovedEvent {
 export interface TrackChangedEvent {
     track: Track
 }
+
+
+export type AudioEvents = AudioReadyEvent | PlayEvent | PauseEvent | StopEvent | SeekEvent | VolumeEvent | NextEvent | PreviousEvent | ProgressUpdateEvent | AudioContextReadyEvent | PlayStateUpdateEvent | DurationUpdateEvent | LoadMetadataEvent | TrackAddedEvent | TrackRemovedEvent | TrackChangedEvent;
+export type Event = AudioEvents;

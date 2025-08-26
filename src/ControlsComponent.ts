@@ -42,23 +42,29 @@ export default class ControlsComponent extends BaseComponent {
     }
 
     pause() {
+        this.eventManager.emit(EVENT_NAMES.PAUSE)
         this.isPlaying = false
         this.playButton.classList.remove('playing')
         this.playButton.classList.remove('paused')
     }
     play() {
+        if (this.isPlaying) { return }
+        this.eventManager.emit(EVENT_NAMES.PLAY)
         this.isPlaying = true
         this.playButton.classList.remove('paused')
         this.playButton.classList.add('playing')
     }
+    handleProgress() {
+        if (this.isDragging) { return }
+        const time = parseFloat(this.progressSlider.value)
+        this.eventManager.emit<SeekEvent>(EVENT_NAMES.SEEK, { currentTime: time })
+    }
     private setupControlListeners() {
         this.playButton.addEventListener('click', () => {
             if (this.isPlaying) {
-                this.eventManager.emit(EVENT_NAMES.PAUSE)
                 this.pause()
             }
             else {
-                this.eventManager.emit(EVENT_NAMES.PLAY)
                 this.play()
             }
         })
@@ -73,16 +79,15 @@ export default class ControlsComponent extends BaseComponent {
             this.eventManager.emit(EVENT_NAMES.PREVIOUS)
         })
         this.progressSlider.addEventListener('input', (e) => {
-            const time = parseFloat(this.progressSlider.value)
-            this.eventManager.emit<SeekEvent>(EVENT_NAMES.SEEK, { time })
+            this.handleProgress()
         })
         this.progressSlider.addEventListener('pointerdown', () => {
             this.isDragging = true
+            this.handleProgress()
         })
         this.progressSlider.addEventListener('pointerup', () => {
             this.isDragging = false
-            const time = parseFloat(this.progressSlider.value)
-            this.eventManager.emit<SeekEvent>(EVENT_NAMES.SEEK, { time: this.progressSlider.value })
+            this.handleProgress()
         })
         this.volumeSlider.addEventListener('input', (e) => {
             const volume = parseFloat(this.volumeSlider.value)
@@ -96,7 +101,7 @@ export default class ControlsComponent extends BaseComponent {
             }
             const { currentTime, duration } = event.detail
             this.progressSlider.value = currentTime.toString()
-            this.currentTime.textContent = this.formatTime(currentTime)
+            this.currentTime.textContent = formatTime(currentTime)
         })
         this.eventManager.on<PlayStateUpdateEvent>(EVENT_NAMES.PLAY_STATE_UPDATE, (event) => {
             this.isPlaying = event.detail.isPlaying

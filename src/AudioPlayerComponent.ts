@@ -5,11 +5,9 @@ import audioPlayerCSS from '@/audio-player.css?raw'
 import type ControlsComponent from './ControlsComponent'
 import { EventManager } from '@/utils/EventManager'
 import { EVENT_NAMES } from '@/utils/Events'
-import type { AudioReadyEvent, ProgressUpdateEvent } from '@/utils/Events'
+import type { AudioReadyEvent, ProgressUpdateEvent, AudioPlayerData } from '@/utils/Events'
 import { Playlist } from '@/Playlist'
-import Liricle from 'liricle'
-
-const liricle = new Liricle();
+import type { LyricsComponent } from './LyricsComponent'
 
 export default class AudioPlayerComponent extends BaseComponent {
     private audioElement: HTMLAudioElement
@@ -42,12 +40,30 @@ export default class AudioPlayerComponent extends BaseComponent {
         console.log('visualiser canvas', this.visualiserCanvas)
         console.log('controls component', this.controlsComponent)
         this.setupHandlers()
+        this.setupAudioListeners()
         this.setupPlaylist()
         this.playlist.goToTrack(0)
+        this.setupLyricsListeners()
+    }
+    public getaudioElement() {
+        return this.audioElement
     }
     setupPlaylist() {
         playlistData.forEach((track) => {
             this.playlist.addTrack(track)
+        })
+    }
+    emitAudioPlayerData() {
+        this.eventManager.emit(EVENT_NAMES.AUDIO_PLAYER_DATA, {
+            audioElement: this.audioElement,
+            audioContext: this.audioContext,
+            duration: this.audioElement.duration,
+            track: this.playlist.getCurrentTrack()
+        })
+    }
+    setupLyricsListeners() {
+        this.eventManager.on(EVENT_NAMES.REQUEST_AUDIO_PLAYER_DATA, (event: CustomEvent<{ audioPlayerComponent: AudioPlayerComponent }>) => {
+            this.emitAudioPlayerData()
         })
     }
     setupAudioListeners() {
@@ -64,7 +80,8 @@ export default class AudioPlayerComponent extends BaseComponent {
             this.durationUpdate()
         })
         this.audioElement.addEventListener('ended', () => {
-            this.playlist.nextTrack()
+            this.nextTrack()
+            this.play()
         })
     }
     durationUpdate() {
@@ -73,19 +90,24 @@ export default class AudioPlayerComponent extends BaseComponent {
         })
     }
     setupHandlers() {
+        const eventManager = this.eventManager
         this.handlers = {
             [EVENT_NAMES.PLAY]: this.play,
             [EVENT_NAMES.PAUSE]: this.pause,
             [EVENT_NAMES.STOP]: this.stop,
             [EVENT_NAMES.NEXT]: this.nextTrack,
             [EVENT_NAMES.PREVIOUS]: this.previousTrack,
-            [EVENT_NAMES.SEEK]: this.seek,
-            [EVENT_NAMES.VOLUME]: this.volume,
             [EVENT_NAMES.TRACK_CHANGED]: this.trackChanged,
         }
         for (const [event, handler] of Object.entries(this.handlers as Record<keyof typeof EVENT_NAMES, (event: CustomEvent<unknown>) => void>)) {
             this.eventManager.on(event as keyof typeof EVENT_NAMES, handler as (event: CustomEvent<unknown>) => void)
         }
+        eventManager.on(EVENT_NAMES.SEEK, (event: CustomEvent<{ currentTime: number }>) => {
+            this.seek(event.detail.currentTime)
+        })
+        eventManager.on(EVENT_NAMES.VOLUME, (event: CustomEvent<{ volume: number }>) => {
+            this.volume(event.detail.volume)
+        })
     }
     load() {
         this.audioElement.load()
@@ -101,9 +123,10 @@ export default class AudioPlayerComponent extends BaseComponent {
         this.playlist.nextTrack();
     }
     trackChanged = (event: CustomEvent<{ track: Track }>) => {
+        console.log('track changed event received', event)
         const track = event.detail.track
-        console.log('track change received', track)
         const isPaused = this.audioElement.paused
+        console.log('track change received', track, isPaused)
         this.audioElement.src = track.src
         this.coverImage.src = track.cover
         this.load()

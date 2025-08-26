@@ -1,3 +1,6 @@
+import { EVENT_NAMES } from "./Events";
+import type { Event } from "./Events";
+
 class EventBus extends EventTarget {
     private static instance: EventBus;
 
@@ -27,8 +30,8 @@ class EventManager {
         this.eventTarget.dispatchEvent(new CustomEvent<T>(eventName, { detail, bubbles: true }));
     }
 
-    off<T>(eventTarget: string, callback: (event: CustomEvent<T>) => void): void {
-        this.element.removeEventListener(eventName, callback as EventListener);
+    off<T>(eventName: string, callback: (event: CustomEvent<T>) => void): void {
+        this.eventTarget.removeEventListener(eventName, callback as EventListener);
     }
 }
 
