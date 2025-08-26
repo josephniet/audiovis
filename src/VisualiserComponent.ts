@@ -13,8 +13,13 @@ export class VisualiserComponent extends BaseComponent {
     progressElement: HTMLElement | null = null
     private canvas: HTMLCanvasElement
     private ctx: CanvasRenderingContext2D
-    private audioCtx: AudioContext
+    private audioContext: AudioContext
     private analyser: AnalyserNode
+    private source: MediaElementAudioSourceNode
+    private audioElement: HTMLAudioElement
+    private animationFrame: number | null = null
+    private scale: number = 1
+    private timeDomainDataArray: Uint8Array
     constructor() {
         super()
         const shadowRoot = this.attachShadow({ mode: 'open' })
@@ -46,19 +51,29 @@ export class VisualiserComponent extends BaseComponent {
     }
     async connectedCallback(): Promise<void> {
         console.log('visualiser component connected')
+        await new Promise(resolve => setTimeout(resolve, 3000)) // waiting for audio to play
+        console.log('debug waited')
         const [audioData, progressElement] = await Promise.all([this.getAudioData(), this.getProgressElement()])
         console.log('visualiser component connected', audioData, progressElement)
         this.progressElement = progressElement
-        this.audioCtx = audioData.audioContext
-        this.analyser = this.audioCtx.createAnalyser()
+        this.audioContext = audioData.audioContext
+        this.audioElement = audioData.audioElement
+        this.source = this.audioContext.createMediaElementSource(this.audioElement)
+        // const gainNode = this.audioContext.createGain()
+        // this.source.connect(gainNode)
+        this.analyser = this.audioContext.createAnalyser()
         this.analyser.fftSize = 256
-        this.analyser.smoothingTimeConstant = 0.8
-        this.analyser.connect(this.audioCtx.destination)
+        this.analyser.smoothingTimeConstant = 1
+        this.analyser.connect(this.audioContext.destination)
+        this.source.connect(this.analyser)
+        // this.source.connect(this.audioContext.destination)
+        this.audioContext.resume()
         this.ctx = this.canvas.getContext('2d')!
         this.ctx.fillStyle = 'rgba(85, 118, 93, 0.5)'
         this.ctx.fillRect(0, 0, this.canvas.clientWidth, this.canvas.clientHeight)
         this.resizeCanvas()
-        drawGrid(this.ctx, this.progressElement)
+        this.animationFrame = requestAnimationFrame(() => this.draw())
+        // this.timeDomainDataArray = new Uint8Array(this.analyser.frequencyBinCount)
     }
     resizeCanvas() {
         if (!this.canvas || !this.ctx) {
@@ -76,6 +91,21 @@ export class VisualiserComponent extends BaseComponent {
         this.canvas.height = Math.floor(height * scale);
         this.scale = scale
         this.ctx.scale(this.scale, this.scale)
+    }
+    draw() {
+        if (!this.progressElement) {
+            throw new Error('Progress element not found')
+        }
+        // Clear canvas
+        this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        drawGrid(this.ctx, this.progressElement)
+        drawWaveform({
+            ctx: this.ctx,
+            analyser: this.analyser,
+            container: this.progressElement
+        })
+        if (this.animationFrame === null) return
+        this.animationFrame = requestAnimationFrame(() => this.draw())
     }
 }
 

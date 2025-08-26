@@ -3,7 +3,7 @@ export function drawGrid(ctx: CanvasRenderingContext2D, container: HTMLElement) 
     const cellHeight = 40
     const width = container.clientWidth
     const height = container.clientHeight
-    console.log('drawing grid', width, height)
+    // console.log('drawing grid', width, height)
     ctx.lineWidth = 1
     ctx.strokeStyle = 'rgba(255, 0, 0, 0.7)'
     ctx.translate(container.offsetLeft, container.offsetTop)
@@ -20,5 +20,4 @@ export function drawGrid(ctx: CanvasRenderingContext2D, container: HTMLElement) 
         ctx.stroke()
     }
     ctx.resetTransform()
-    console.log('grid drawn')
 }

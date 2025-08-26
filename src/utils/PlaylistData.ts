@@ -7,6 +7,7 @@ import TaintedLoveLrc from '@/audio/Tainted Love.lrc?raw'
 import RunOnAudio from '@/audio/Run On - Jamie Bower.mp3'
 import RunOnCover from '@/audio/Run On.jpg'
 import RunOnLrc from '@/audio/Run On.lrc?raw'
+import StereoAudio from '@/audio/stereo-test.mp3'
 
 export interface Track {
     src: string
@@ -61,6 +62,13 @@ const taintedLove = new TrackData()
 const runOn = new TrackData()
     .addSource(RunOnAudio)
     .addTitle('Run On')
+    .addCover(RunOnCover)
+    .addLrc(RunOnLrc)
+    .build()
+
+const stereoTest = new TrackData()
+    .addSource(StereoAudio)
+    .addTitle('Stereo Test')
     .addCover(RunOnCover)
     .addLrc(RunOnLrc)
     .build()
