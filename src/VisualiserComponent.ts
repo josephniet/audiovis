@@ -7,6 +7,8 @@ import type { ControlsData, AudioPlayerData } from '@/utils/Events'
 import { createMonoFromStereo } from '@/utils/monoMaker'
 import { drawGrid } from './visualiser/utils/drawGrid'
 import { drawWaveform } from './visualiser/utils/drawWaveform'
+import { BeatDetector } from './visualiser/utils/BeatDetector'
+import { BeatDetectorBasic } from './visualiser/utils/BeatDetectorBasic'
 
 export class VisualiserComponent extends BaseComponent {
     eventManager = new EventManager()
@@ -20,6 +22,7 @@ export class VisualiserComponent extends BaseComponent {
     private animationFrame: number | null = null
     private scale: number = 1
     private timeDomainDataArray: Uint8Array
+    private beatDetector: BeatDetectorBasic
     constructor() {
         super()
         const shadowRoot = this.attachShadow({ mode: 'open' })
@@ -62,10 +65,11 @@ export class VisualiserComponent extends BaseComponent {
         // const gainNode = this.audioContext.createGain()
         // this.source.connect(gainNode)
         this.analyser = this.audioContext.createAnalyser()
-        this.analyser.fftSize = 256
-        this.analyser.smoothingTimeConstant = 1
+        this.analyser.fftSize = 32
+        // this.analyser.smoothingTimeConstant = 1
         this.analyser.connect(this.audioContext.destination)
         this.source.connect(this.analyser)
+        this.beatDetector = new BeatDetectorBasic(this.analyser, 4)
         // this.source.connect(this.audioContext.destination)
         this.audioContext.resume()
         this.ctx = this.canvas.getContext('2d')!
@@ -96,8 +100,17 @@ export class VisualiserComponent extends BaseComponent {
         if (!this.progressElement) {
             throw new Error('Progress element not found')
         }
-        // Clear canvas
         this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
+        const isBeat = this.beatDetector.detect()
+        if (isBeat) {
+            this.ctx.fillStyle = 'rgba(255, 0, 0, 0.5)'
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+            console.log('is beat')
+        } else {
+            this.ctx.fillStyle = 'rgba(52, 71, 133, 0.5)'
+            this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
+        }
+        // Clear canvas
         drawGrid(this.ctx, this.progressElement)
         drawWaveform({
             ctx: this.ctx,
